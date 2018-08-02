@@ -17,7 +17,7 @@ public class App {
 
 	String name;
 	
-	float[] cpu;
+	double[] cpu;
 	double[] ram;
 	int disk;
 	int p; 
@@ -30,16 +30,16 @@ public class App {
 	public App(String[] resource) {
 		this(
 				resource[0],
-				ConvertUtils.convertStringArrayToFloatArray(resource[1].split(PathConstants.orDelimiter)),
+				ConvertUtils.convertStringArrayToDoubleArray(resource[1].split(PathConstants.orDelimiter)),
 				ConvertUtils.convertStringArrayToDoubleArray(resource[2].split(PathConstants.orDelimiter)),
-				Integer.parseInt(resource[3]),
+				(int)Math.round(Double.parseDouble(resource[3])),//should change this, too sleepy to fix in all places
 				Integer.parseInt(resource[4]),
 				Integer.parseInt(resource[5]),
 				Integer.parseInt(resource[6])
 				);
 	}
 	
-	public App(String name, float[] cpu, double[] ram, int disk, int p, int m, int pm) {
+	public App(String name, double[] cpu, double[] ram, int disk, int p, int m, int pm) {
 		super();
 		this.name = name;
 		this.cpu = cpu;
@@ -81,10 +81,10 @@ public class App {
 		}
 	}
 	
-	public float[] getCpu() {
+	public double[] getCpu() {
 		return cpu;
 	}
-	public void setCpu(float[] cpu) {
+	public void setCpu(double[] cpu) {
 		this.cpu = cpu;
 	}
 	public double[] getRam() {

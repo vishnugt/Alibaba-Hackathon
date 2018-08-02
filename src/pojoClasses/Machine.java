@@ -19,7 +19,7 @@ public class Machine {
 	int m, currentM;
 	int pm, currentPM;
 
-	float[] currentCpuCurve;
+	double[] currentCpuCurve;
 	double[] currentRamCurve;
 
 	ArrayList<Instance> instances;
@@ -48,7 +48,7 @@ public class Machine {
 		this.instances = new ArrayList<>();
 		this.appVsAppCount = new HashMap<>();
 
-		currentCpuCurve = new float[98];
+		currentCpuCurve = new double[98];
 		currentRamCurve = new double[98];
 
 		for (int i = 0; i < 98; ++i) {
