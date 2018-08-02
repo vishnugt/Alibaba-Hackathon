@@ -1,9 +1,12 @@
 package mainPackage;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.text.DateFormat;
 
 import pojoClasses.Instance;
 import pojoClasses.Machine;
+import utils.PathConstants;
 
 /**
  * @author vishn
@@ -11,10 +14,25 @@ import pojoClasses.Machine;
  */
 public class Main {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		System.out.println("Program Init - " + DateFormat.getTimeInstance().getCalendar().getTime());
 		init();
 		assignInstances();
+		writeOutput();
+	}
+
+	private static void writeOutput() throws Exception {
+		PrintWriter pw = new PrintWriter(new File(PathConstants.outputFileName));
+		StringBuilder sb = new StringBuilder();
+		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values()) {
+			sb.append(instance.getName());
+			sb.append(PathConstants.csvDelimiter);
+			sb.append(instance.getMachine().getName());
+			sb.append(PathConstants.newLine);
+		}
+		pw.write(sb.toString());
+		pw.close();
+		System.out.println("Output ready!");
 	}
 
 	private static void init() {
@@ -27,6 +45,7 @@ public class Main {
 	}
 
 	private static void assignInstances() {
+		System.out.println("Total number of machines: " + Constants.MACHINEVSMACHINEINFO.size());
 		int logicInsufficient = 0;
 		int numAssigned = 0;
 		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values()) {
@@ -34,8 +53,11 @@ public class Main {
 			if (instance.getMachine() == null) {
 				for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
 					if (machine.addInstanceIfPossible(instance)) {
-						numAssigned++;
 						isAssigned = true;
+						numAssigned++;
+						if (numAssigned % 1000 == 0) {
+							System.out.println("Assigned " + numAssigned);
+						}
 						break;
 					}
 				}
@@ -47,6 +69,14 @@ public class Main {
 		}
 		System.out.println(logicInsufficient + " instances not able to assign");
 		System.out.println(numAssigned + " instances assigned");
-		
+
+		int machineUsed = 0;
+		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
+			if (machine.getNumInstances() > 0) {
+				machineUsed++;
+			}
+		}
+		System.out.println(machineUsed + " number of machines used");
+
 	}
 }

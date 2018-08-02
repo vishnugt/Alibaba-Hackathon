@@ -50,7 +50,7 @@ public class Machine {
 
 		currentCpuCurve = new float[98];
 		currentRamCurve = new double[98];
-		
+
 		for (int i = 0; i < 98; ++i) {
 			currentCpuCurve[i] = 0.0f;
 			currentRamCurve[i] = 0.0d;
@@ -58,13 +58,28 @@ public class Machine {
 	}
 
 	public void addInstanceBlindly(Instance newInstance) {
+		updateMachineCurrentParameters(newInstance);
 		this.instances.add(newInstance);
 		if (!this.appVsAppCount.containsKey(newInstance.getApp())) {
-			this.appVsAppCount.put(newInstance.getApp(), 1);
+			this.appVsAppCount.put(newInstance.getApp(), 0);
 		}
 		// mutable integer needed?
 		this.appVsAppCount.put(newInstance.getApp(), this.appVsAppCount.get(newInstance.getApp()) + 1);
 		newInstance.setMachine(this);
+	}
+
+	private void updateMachineCurrentParameters(Instance newInstance) {
+		App newApp = newInstance.getApp();
+		for (int i = 0; i < 98; ++i) {
+			currentCpuCurve[i] += newApp.getCpu()[i];
+			currentRamCurve[i] += newApp.getRam()[i];
+		}
+
+		this.currentDisk += newApp.getDisk();
+		this.currentM += newApp.getM();
+		this.currentP += newApp.getP();
+		this.currentPM += newApp.getPm();
+
 	}
 
 	public boolean addInstanceIfPossible(Instance newInstance) {
@@ -80,8 +95,10 @@ public class Machine {
 				newAppCount = this.appVsAppCount.get(newApp);
 			}
 			Integer limit = existingApp.inteferenceAppAndCount.get(newApp);
-			limit = limit == null ? 0 : limit;
-			if (!(newAppCount + 1 < limit)) {
+			if (limit == null) {
+				continue;
+			}
+			if (!(newAppCount + 1 <= limit)) {
 				return false;
 			}
 		}
@@ -89,25 +106,19 @@ public class Machine {
 		// at this point app interference has been solved
 		// machine constraints
 		for (int i = 0; i < 98; ++i) {
-			currentCpuCurve[i] += newApp.getCpu()[i];
-			currentRamCurve[i] += newApp.getRam()[i];
-			if (currentCpuCurve[i] > this.cpu || currentRamCurve[i] > this.ram) {
+			if (currentCpuCurve[i] + newApp.getCpu()[i] > this.cpu
+					|| currentRamCurve[i] + newApp.getRam()[i] > this.ram) {
 				return false;
 			}
 		}
-		
-		this.currentDisk += newApp.getDisk();
-		this.currentM += newApp.getM();
-		this.currentP += newApp.getP();
-		this.currentPM += newApp.getPm();
 
-		if (this.currentDisk > this.disk || this.currentM > this.m || this.currentP > this.p
-				|| this.currentPM > this.pm) {
+		if (this.currentDisk + newApp.getDisk() > this.disk || this.currentM + newApp.getM() > this.m
+				|| this.currentP + newApp.getP() > this.p || this.currentPM + newApp.getPm() > this.pm) {
 			return false;
 		}
 
-		//well done to survive all checks
-		System.out.println(newInstance + "is going to be added to " + this.getName());
+		// well done to survive all checks
+		//System.out.println(newInstance + "is going to be added to " + this.getName());
 		addInstanceBlindly(newInstance);
 		return true;
 	}
@@ -168,6 +179,11 @@ public class Machine {
 		this.name = name;
 	}
 
+	public int getNumInstances() 
+	{
+		return this.instances.size();
+	}
+	
 	@Override
 	public String toString() {
 		return "Machine [name=" + name + ", cpu=" + cpu + ", ram=" + ram + ", disk=" + disk + ", p=" + p + ", m=" + m

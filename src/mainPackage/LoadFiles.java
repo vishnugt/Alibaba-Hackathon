@@ -67,17 +67,17 @@ public class LoadFiles {
 			app.addInstance(instance);
 			System.out.println(app.getName() + " has instance: " + instanceName);
 
-			if (resource.length < 3) {
-				instancesNotScheduled++;
-				System.out.println(instance.getName() + " belongs to app " + app.getName() + " is not scheduled yet");
-				continue;
-			}
-			String machineName = resource[2];
-			if (!machineName.matches(PathConstants.emptyString)) {
-				Machine machine = Constants.MACHINEVSMACHINEINFO.get(machineName);
-				machine.addInstanceBlindly(instance);
-				System.out.println(instance.getName() + " belongs to app " + app.getName() + " is scheduled to run on " + machine.getName());
-			}
+//			if (resource.length < 3) {
+//				instancesNotScheduled++;
+//				System.out.println(instance.getName() + " belongs to app " + app.getName() + " is not scheduled yet");
+//				continue;
+//			}
+//			String machineName = resource[2];
+//			if (!machineName.matches(PathConstants.emptyString)) {
+//				Machine machine = Constants.MACHINEVSMACHINEINFO.get(machineName);
+//				machine.addInstanceBlindly(instance);
+//				System.out.println(instance.getName() + " belongs to app " + app.getName() + " is scheduled to run on " + machine.getName());
+//			}
 		}
 		System.out.println(instancesNotScheduled + " instances are yet to be scheduled");
 		br.close();

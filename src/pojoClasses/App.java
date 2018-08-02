@@ -132,7 +132,7 @@ public class App {
 
 	@Override
 	public String toString() {
-		return "App [name="+ name ;
+		return "App [name="+ name + "]" ;
 		//+ ", cpu=" + Arrays.toString(cpu) + ", ram=" + Arrays.toString(ram) + ", disk="
 			//	+ disk + ", p=" + p + ", m=" + m + ", pm=" + pm + ", instances=" + instances
 				//+ ", inteferenceAppAndCount=" + inteferenceAppAndCount + "]";
