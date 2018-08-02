@@ -54,7 +54,18 @@ public class App {
 		
 	}
 	
-
+	
+	
+	public void addInstance(Instance instance) 
+	{
+		this.instances.add(instance);
+	}
+	
+	public void addInterference(App newApp, int count) 
+	{
+		this.inteferenceAppAndCount.put(newApp, count);
+	}
+	
 	public int getNumPossibleApps(App newApp) 
 	{
 		Integer count = this.inteferenceAppAndCount.get(newApp);
@@ -121,9 +132,10 @@ public class App {
 
 	@Override
 	public String toString() {
-		return "App [name=" + name + ", cpu=" + Arrays.toString(cpu) + ", ram=" + Arrays.toString(ram) + ", disk="
-				+ disk + ", p=" + p + ", m=" + m + ", pm=" + pm + ", instances=" + instances
-				+ ", inteferenceAppAndCount=" + inteferenceAppAndCount + "]";
+		return "App [name="+ name ;
+		//+ ", cpu=" + Arrays.toString(cpu) + ", ram=" + Arrays.toString(ram) + ", disk="
+			//	+ disk + ", p=" + p + ", m=" + m + ", pm=" + pm + ", instances=" + instances
+				//+ ", inteferenceAppAndCount=" + inteferenceAppAndCount + "]";
 	}
 	
 }

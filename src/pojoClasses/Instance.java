@@ -5,13 +5,23 @@ package pojoClasses;
  * @author vishn
  *
  */
-public class Instance {
+public class Instance extends Object{
 	App app;
 	String name;
+	Machine machine;
 
 	public Instance(String name, App app) {
 		super();
+		this.name = name;
 		this.app = app;
+	}
+
+	public Machine getMachine() {
+		return machine;
+	}
+
+	public void setMachine(Machine machine) {
+		this.machine = machine;
 	}
 
 	public String getName() {
@@ -33,6 +43,12 @@ public class Instance {
 	@Override
 	public String toString() {
 		return "Instance [app=" + app.toString() + ", name=" + name + "]";
+	}
+	
+	@Override
+	public int hashCode() 
+	{
+		return name.hashCode();
 	}
 
 }
