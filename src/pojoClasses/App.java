@@ -19,10 +19,10 @@ public class App {
 	
 	double[] cpu;
 	double[] ram;
-	int disk;
-	int p; 
-	int m;
-	int pm;
+	double disk;
+	double p; 
+	double m;
+	double pm;
 	ArrayList<Instance> instances;
 	HashMap<App, Integer> inteferenceAppAndCount;
 	
@@ -32,14 +32,14 @@ public class App {
 				resource[0],
 				ConvertUtils.convertStringArrayToDoubleArray(resource[1].split(PathConstants.orDelimiter)),
 				ConvertUtils.convertStringArrayToDoubleArray(resource[2].split(PathConstants.orDelimiter)),
-				(int)Math.round(Double.parseDouble(resource[3])),//should change this, too sleepy to fix in all places
-				Integer.parseInt(resource[4]),
-				Integer.parseInt(resource[5]),
-				Integer.parseInt(resource[6])
+				Double.parseDouble(resource[3]),//should change this, too sleepy to fix in all places
+				Double.parseDouble(resource[4]),
+				Double.parseDouble(resource[5]),
+				Double.parseDouble(resource[6])
 				);
 	}
 	
-	public App(String name, double[] cpu, double[] ram, int disk, int p, int m, int pm) {
+	public App(String name, double[] cpu, double[] ram, double disk, double p, double m, double pm) {
 		super();
 		this.name = name;
 		this.cpu = cpu;
@@ -84,38 +84,21 @@ public class App {
 	public double[] getCpu() {
 		return cpu;
 	}
-	public void setCpu(double[] cpu) {
-		this.cpu = cpu;
-	}
+
 	public double[] getRam() {
 		return ram;
 	}
-	public void setRam(double[] ram) {
-		this.ram = ram;
-	}
-	public int getDisk() {
+	public double getDisk() {
 		return disk;
 	}
-	public void setDisk(int disk) {
-		this.disk = disk;
-	}
-	public int getP() {
+	public double getP() {
 		return p;
 	}
-	public void setP(int p) {
-		this.p = p;
-	}
-	public int getM() {
+	public double getM() {
 		return m;
 	}
-	public void setM(int m) {
-		this.m = m;
-	}
-	public int getPm() {
+	public double getPm() {
 		return pm;
-	}
-	public void setPm(int pm) {
-		this.pm = pm;
 	}
 	public ArrayList<Instance> getInstances() {
 		return instances;
@@ -130,6 +113,10 @@ public class App {
 		this.name = name;
 	}
 
+	@Override
+	public int hashCode() {
+		return name.hashCode();
+	}
 	@Override
 	public String toString() {
 		return "App [name="+ name + "]" ;

@@ -25,6 +25,9 @@ public class Main {
 		PrintWriter pw = new PrintWriter(new File(PathConstants.outputFileName));
 		StringBuilder sb = new StringBuilder();
 		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values()) {
+			if (instance.getMachine() == null) {
+				continue;
+			}
 			sb.append(instance.getName());
 			sb.append(PathConstants.csvDelimiter);
 			sb.append(instance.getMachine().getName());
@@ -77,6 +80,36 @@ public class Main {
 			}
 		}
 		System.out.println(machineUsed + " number of machines used");
+		debugMethod();
+
+	}
+
+	public static void debugMethod() {
+
+		Instance instance = Constants.INSTANCEVSINSTANCEINFO.get("inst_57715");
+		if (instance == null) {
+			return;
+		}
+		instance.getMachine().instances.remove(instance);
+		instance.setMachine(null);
+		int i = 0;
+		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
+			i++;
+			if (i > 4000) {
+				if (machine.addInstanceIfPossible(instance)) {
+					System.out.println("reassigned ");
+					break;
+				}
+			}
+		}
+
+		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
+			if (machine.getName().equals("machine_1130")) {
+				int a = 1;
+				System.out.println(a);
+				System.out.println(machine.toString());
+			}
+		}
 
 	}
 }
