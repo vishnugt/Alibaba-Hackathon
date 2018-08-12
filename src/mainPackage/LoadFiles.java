@@ -85,6 +85,7 @@ public class LoadFiles
 				Machine machine = Constants.MACHINEVSMACHINEINFO.get(machineName);
 				//machine.addInstanceIfPossible(instance);
 				machine.addInstanceBlindly(instance, true);
+				instance.setDefault(true);
 				System.out.println(instance.getName() + " belongs to app " + app.getName() + " is scheduled to run on " + machine.getName());
 			}
 		}

@@ -21,7 +21,6 @@ public class Machine
 	double p, currentP;
 	double m, currentM;
 	double pm, currentPM;
-	boolean isDefault;
 
 	BigDecimal[] currentCpuCurve;
 	BigDecimal[] currentRamCurve;
@@ -77,7 +76,6 @@ public class Machine
 		// mutable integer needed?
 		this.appVsAppCount.put(newInstance.getApp(), this.appVsAppCount.get(newInstance.getApp()) + 1);
 		newInstance.setMachine(this);
-		this.isDefault = isDefault;
 		return true;
 	}
 
@@ -256,11 +254,6 @@ public class Machine
 	public int getNumInstances()
 	{
 		return this.instances.size();
-	}
-	
-	public boolean getIsDefault()
-	{
-		return isDefault;
 	}
 
 	@Override

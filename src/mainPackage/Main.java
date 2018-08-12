@@ -29,7 +29,7 @@ public class Main
 		StringBuilder sb = new StringBuilder();
 		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values())
 		{
-			if (instance.getMachine() == null || instance.getMachine().getIsDefault())
+			if (instance.getMachine() == null || instance.isDefault())//isDefault check????
 			{
 				continue;
 			}
@@ -70,6 +70,7 @@ public class Main
 				{
 					if (machine.addInstanceIfPossible(instance))
 					{
+						instance.setDefault(false);
 						isAssigned = true;
 						numAssigned++;
 						if (numAssigned % 1000 == 0)

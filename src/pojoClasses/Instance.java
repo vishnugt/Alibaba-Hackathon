@@ -10,6 +10,8 @@ public class Instance extends Object
 	String name;
 	Machine machine;
 
+	boolean isDefault; //to know if it was assigned by default
+
 	public Instance(String name, App app)
 	{
 		super();
@@ -57,6 +59,16 @@ public class Instance extends Object
 	public int hashCode()
 	{
 		return name.hashCode();
+	}
+	
+	public boolean isDefault()
+	{
+		return isDefault;
+	}
+
+	public void setDefault(boolean isDefault)
+	{
+		this.isDefault = isDefault;
 	}
 
 }
