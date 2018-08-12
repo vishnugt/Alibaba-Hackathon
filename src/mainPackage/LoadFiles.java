@@ -64,12 +64,8 @@ public class LoadFiles
 			String instanceName = resource[0];
 			String appName = resource[1];
 			App app = Constants.APPVSAPPINFO.get(appName);
-			Instance instance = Constants.INSTANCEVSINSTANCEINFO.get(instanceName);
-			if (instance == null)
-			{
-				instance = new Instance(instanceName, app);
-				Constants.INSTANCEVSINSTANCEINFO.put(instanceName, instance);
-			}
+			Instance instance = new Instance(instanceName, app);
+			Constants.INSTANCEVSINSTANCEINFO.put(instanceName, instance);
 			app.addInstance(instance);
 			System.out.println(app.getName() + " has instance: " + instanceName);
 
@@ -91,5 +87,11 @@ public class LoadFiles
 		}
 		System.out.println(instancesNotScheduled + " instances are yet to be scheduled");
 		br.close();
+		
+
+		System.out.println("toatl instances " + Constants.INSTANCEVSINSTANCEINFO.size());
+		System.out.println("toatl machines " + Constants.MACHINEVSMACHINEINFO.size());
+		System.out.println("toatl apps " + Constants.APPVSAPPINFO.size());
+		
 	}
 }
