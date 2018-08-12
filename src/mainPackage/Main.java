@@ -12,20 +12,25 @@ import utils.PathConstants;
  * @author vishn
  *
  */
-public class Main {
+public class Main
+{
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception
+	{
 		System.out.println("Program Init - " + DateFormat.getTimeInstance().getCalendar().getTime());
 		init();
 		assignInstances();
 		writeOutput();
 	}
 
-	private static void writeOutput() throws Exception {
+	private static void writeOutput() throws Exception
+	{
 		PrintWriter pw = new PrintWriter(new File(PathConstants.outputFileName));
 		StringBuilder sb = new StringBuilder();
-		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values()) {
-			if (instance.getMachine() == null) {
+		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values())
+		{
+			if (instance.getMachine() == null || instance.getMachine().getIsDefault())
+			{
 				continue;
 			}
 			sb.append(instance.getName());
@@ -38,33 +43,44 @@ public class Main {
 		System.out.println("Output ready!");
 	}
 
-	private static void init() {
-		try {
+	private static void init()
+	{
+		try
+		{
 			LoadFiles.loadAllFiles();
-		} catch (Exception e) {
+		}
+		catch (Exception e)
+		{
 			System.out.println("Exception while loading all files");
 			e.printStackTrace();
 		}
 	}
 
-	private static void assignInstances() {
+	private static void assignInstances()
+	{
 		System.out.println("Total number of machines: " + Constants.MACHINEVSMACHINEINFO.size());
 		int logicInsufficient = 0;
 		int numAssigned = 0;
-		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values()) {
+		for (Instance instance : Constants.INSTANCEVSINSTANCEINFO.values())
+		{
 			boolean isAssigned = false;
-			if (instance.getMachine() == null) {
-				for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
-					if (machine.addInstanceIfPossible(instance)) {
+			if (instance.getMachine() == null)
+			{
+				for (Machine machine : Constants.MACHINEVSMACHINEINFO.values())
+				{
+					if (machine.addInstanceIfPossible(instance))
+					{
 						isAssigned = true;
 						numAssigned++;
-						if (numAssigned % 1000 == 0) {
+						if (numAssigned % 1000 == 0)
+						{
 							System.out.println("Assigned " + numAssigned);
 						}
 						break;
 					}
 				}
-				if (!isAssigned) {
+				if (!isAssigned)
+				{
 					logicInsufficient++;
 					// System.out.println("Logic Insufficient");
 				}
@@ -74,8 +90,10 @@ public class Main {
 		System.out.println(numAssigned + " instances assigned");
 
 		int machineUsed = 0;
-		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
-			if (machine.getNumInstances() > 0) {
+		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values())
+		{
+			if (machine.getNumInstances() > 0)
+			{
 				machineUsed++;
 			}
 		}
@@ -84,32 +102,35 @@ public class Main {
 
 	}
 
-	public static void debugMethod() {
-
-		Instance instance = Constants.INSTANCEVSINSTANCEINFO.get("inst_57715");
-		if (instance == null) {
+	public static void reassign(String instanceName)
+	{
+		Instance instance = Constants.INSTANCEVSINSTANCEINFO.get(instanceName);
+		if (instance == null)
+		{
 			return;
 		}
 		instance.getMachine().instances.remove(instance);
 		instance.setMachine(null);
 		int i = 0;
-		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
+		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values())
+		{
 			i++;
-			if (i > 4000) {
-				if (machine.addInstanceIfPossible(instance)) {
-					System.out.println("reassigned ");
+			if (i > 4000)
+			{
+				if (machine.addInstanceIfPossible(instance))
+				{
+					System.out.println("reassigned " + instanceName);
 					break;
 				}
 			}
 		}
-
-		for (Machine machine : Constants.MACHINEVSMACHINEINFO.values()) {
-			if (machine.getName().equals("machine_1130")) {
-				int a = 1;
-				System.out.println(a);
-				System.out.println(machine.toString());
-			}
-		}
-
+		
+	}
+	
+	
+	public static void debugMethod()
+	{
+		reassign("inst_33721");
+		reassign("inst_57715");
 	}
 }

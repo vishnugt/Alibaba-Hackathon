@@ -1,5 +1,6 @@
 package pojoClasses;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,7 +10,8 @@ import java.util.Map.Entry;
  * @author vishn
  *
  */
-public class Machine {
+public class Machine
+{
 
 	String name;
 
@@ -19,20 +21,21 @@ public class Machine {
 	double p, currentP;
 	double m, currentM;
 	double pm, currentPM;
+	boolean isDefault;
 
-	double[] currentCpuCurve;
-	double[] currentRamCurve;
+	BigDecimal[] currentCpuCurve;
+	BigDecimal[] currentRamCurve;
 
 	public ArrayList<Instance> instances;
 	HashMap<App, Integer> appVsAppCount;
 
-	public Machine(String[] resource) {
-		this(resource[0], Double.parseDouble(resource[1]), Double.parseDouble(resource[2]),
-				Double.parseDouble(resource[3]), Double.parseDouble(resource[4]), Double.parseDouble(resource[5]),
-				Double.parseDouble(resource[6]));
+	public Machine(String[] resource)
+	{
+		this(resource[0], Double.parseDouble(resource[1]), Double.parseDouble(resource[2]), Double.parseDouble(resource[3]), Double.parseDouble(resource[4]), Double.parseDouble(resource[5]), Double.parseDouble(resource[6]));
 	}
 
-	public Machine(String name, double cpu, double ram, double disk, double p, double m, double pm) {
+	public Machine(String name, double cpu, double ram, double disk, double p, double m, double pm)
+	{
 		super();
 		this.name = name;
 		this.cpu = cpu;
@@ -50,34 +53,42 @@ public class Machine {
 		this.instances = new ArrayList<>();
 		this.appVsAppCount = new HashMap<>();
 
-		currentCpuCurve = new double[98];
-		currentRamCurve = new double[98];
+		currentCpuCurve = new BigDecimal[98];
+		currentRamCurve = new BigDecimal[98];
 
-		for (int i = 0; i < 98; ++i) {
-			currentCpuCurve[i] = 0.0f;
-			currentRamCurve[i] = 0.0f;
+		for (int i = 0; i < 98; ++i)
+		{
+			currentCpuCurve[i] = new BigDecimal(0);
+			currentRamCurve[i] = new BigDecimal(0);
 		}
 	}
 
-	public boolean addInstanceBlindly(Instance newInstance) {
-		if (!updateMachineCurrentParameters(newInstance)) {
+	public boolean addInstanceBlindly(Instance newInstance, boolean isDefault)
+	{
+		if (!updateMachineCurrentParameters(newInstance))
+		{
 			return false;
 		}
 		this.instances.add(newInstance);
-		if (!this.appVsAppCount.containsKey(newInstance.getApp())) {
+		if (!this.appVsAppCount.containsKey(newInstance.getApp()))
+		{
 			this.appVsAppCount.put(newInstance.getApp(), 0);
 		}
 		// mutable integer needed?
 		this.appVsAppCount.put(newInstance.getApp(), this.appVsAppCount.get(newInstance.getApp()) + 1);
 		newInstance.setMachine(this);
+		this.isDefault = isDefault;
 		return true;
 	}
 
-	private boolean updateMachineCurrentParameters(Instance newInstance) {
+	private boolean updateMachineCurrentParameters(Instance newInstance)
+	{
 		App newApp = newInstance.getApp();
-		for (int i = 0; i < 98; ++i) {
-			currentCpuCurve[i] += newApp.getCpu()[i];
-			currentRamCurve[i] += newApp.getRam()[i];
+		for (int i = 0; i < 98; ++i)
+		{
+			currentCpuCurve[i] = currentCpuCurve[i].add(newApp.getCpu()[i]);
+			currentRamCurve[i] = currentRamCurve[i].add(newApp.getCpu()[i]);
+
 		}
 
 		this.currentDisk += newApp.getDisk();
@@ -85,21 +96,22 @@ public class Machine {
 		this.currentP += newApp.getP();
 		this.currentPM += newApp.getPm();
 
-		if (currentDisk > disk || currentM > m || currentP > p || currentPM > pm) {
+		if (currentDisk > disk || currentM > m || currentP > p || currentPM > pm)
+		{
 			return false;
 		}
 		return true;
 	}
 
 	// both counts will be >= 1
-	private boolean validate(App app1, int app1Count, App app2, int app2Count) {
+	private boolean validate(App app1, int app1Count, App app2, int app2Count)
+	{
 
-		int k1 = app1.inteferenceAppAndCount.get(app2) == null ? Integer.MAX_VALUE
-				: app1.inteferenceAppAndCount.get(app2);
-		int k2 = app2.inteferenceAppAndCount.get(app1) == null ? Integer.MAX_VALUE
-				: app2.inteferenceAppAndCount.get(app1);
+		int k1 = app1.inteferenceAppAndCount.get(app2) == null ? Integer.MAX_VALUE : app1.inteferenceAppAndCount.get(app2);
+		int k2 = app2.inteferenceAppAndCount.get(app1) == null ? Integer.MAX_VALUE : app2.inteferenceAppAndCount.get(app1);
 
-		if (k1 == 0 || k2 == 0) {
+		if (k1 == 0 || k2 == 0)
+		{
 			return false;
 		}
 
@@ -110,127 +122,151 @@ public class Machine {
 		// System.out.println(a);
 		// }
 
-		if (app1.getName().equals(app2.getName())) {
-			if (app1Count > k1) {
+		if (app1.getName().equals(app2.getName()))
+		{
+			if (app1Count > k1)
+			{
 				return false;
 			}
 		}
 
-		if (app2Count > k1) {
+		if (app2Count > k1)
+		{
 			return false;
 		}
-		if (app1Count > k2) {
+		if (app1Count > k2)
+		{
 			return false;
 		}
 		return true;
 	}
 
-	public boolean addInstanceIfPossible(Instance newInstance) {
+	public boolean addInstanceIfPossible(Instance newInstance)
+	{
 
 		App currentApp = newInstance.getApp();
 
 		// real logic starts
 		// 1. appserver interference check
-		for (Entry<App, Integer> entry : this.appVsAppCount.entrySet()) {
+		for (Entry<App, Integer> entry : this.appVsAppCount.entrySet())
+		{
 			App app1 = currentApp;
 			App app2 = entry.getKey();
 
 			int app1Count = this.appVsAppCount.get(app1) == null ? 1 : this.appVsAppCount.get(app1) + 1;
 			int app2Count = entry.getValue();
 
-			if (!validate(app1, app1Count, app2, app2Count)) {
+			if (!validate(app1, app1Count, app2, app2Count))
+			{
 				return false;
 			}
 		}
 
 		// at this point app interference has been solved
 		// machine constraints
-		for (int i = 0; i < 98; ++i) {
-			if (currentCpuCurve[i] + currentApp.getCpu()[i] > this.cpu
-					|| currentRamCurve[i] + currentApp.getRam()[i] > this.ram) {
+		for (int i = 0; i < 98; ++i)
+		{
+			if (currentCpuCurve[i].add(currentApp.getCpu()[i]).doubleValue() > this.cpu || currentRamCurve[i].add(currentApp.getRam()[i]).doubleValue() > this.ram)
+			{
 				return false;
 			}
 		}
 
-		if (this.currentDisk + currentApp.getDisk() >= this.disk || this.currentM + currentApp.getM() >= this.m
-				|| this.currentP + currentApp.getP() >= this.p || this.currentPM + currentApp.getPm() >= this.pm) {
+		if (this.currentDisk + currentApp.getDisk() > this.disk || this.currentM + currentApp.getM() > this.m || this.currentP + currentApp.getP() > this.p || this.currentPM + currentApp.getPm() > this.pm)
+		{
 			return false;
 		}
 
 		// well done to survive all checks
 		// System.out.println(newInstance + "is going to be added to " +
 		// this.getName());
-		return addInstanceBlindly(newInstance);
+		return addInstanceBlindly(newInstance, false);
 	}
 
-	public double getCpu() {
+	public double getCpu()
+	{
 		return cpu;
 	}
 
-	public void setCpu(int cpu) {
+	public void setCpu(int cpu)
+	{
 		this.cpu = cpu;
 	}
 
-	public double getRam() {
+	public double getRam()
+	{
 		return ram;
 	}
 
-	public void setRam(int ram) {
+	public void setRam(int ram)
+	{
 		this.ram = ram;
 	}
 
-	public double getDisk() {
+	public double getDisk()
+	{
 		return disk;
 	}
 
-	public void setDisk(int disk) {
+	public void setDisk(int disk)
+	{
 		this.disk = disk;
 	}
 
-	public double getP() {
+	public double getP()
+	{
 		return p;
 	}
 
-	public void setP(int p) {
+	public void setP(int p)
+	{
 		this.p = p;
 	}
 
-	public double getM() {
+	public double getM()
+	{
 		return m;
 	}
 
-	public void setM(int m) {
+	public void setM(int m)
+	{
 		this.m = m;
 	}
 
-	public double getPm() {
+	public double getPm()
+	{
 		return pm;
 	}
 
-	public void setPm(int pm) {
+	public void setPm(int pm)
+	{
 		this.pm = pm;
 	}
 
-	public String getName() {
+	public String getName()
+	{
 		return name;
 	}
 
-	public void setName(String name) {
+	public void setName(String name)
+	{
 		this.name = name;
 	}
 
-	public int getNumInstances() {
+	public int getNumInstances()
+	{
 		return this.instances.size();
+	}
+	
+	public boolean getIsDefault()
+	{
+		return isDefault;
 	}
 
 	@Override
-	public String toString() {
-		return "Machine [name=" + name + ", cpu=" + cpu + ", ram=" + ram + ", disk=" + disk + ", currentDisk="
-				+ currentDisk + ", p=" + p + ", currentP=" + currentP + ", m=" + m + ", currentM=" + currentM + ", pm="
-				+ pm + ", currentPM=" + currentPM + ", currentCpuCurve=" + Arrays.toString(currentCpuCurve)
-				+ ", currentRamCurve=" + Arrays.toString(currentRamCurve) + "]";
+	public String toString()
+	{
+		return "Machine [name=" + name + ", cpu=" + cpu + ", ram=" + ram + ", disk=" + disk + ", currentDisk=" + currentDisk + ", p=" + p + ", currentP=" + currentP + ", m=" + m + ", currentM=" + currentM + ", pm=" + pm + ", currentPM=" + currentPM + ", currentCpuCurve=" + Arrays.toString(currentCpuCurve) + ", currentRamCurve=" + Arrays.toString(currentRamCurve) + "]";
 	}
-
-
 
 }

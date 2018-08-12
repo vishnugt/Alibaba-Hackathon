@@ -10,13 +10,13 @@ import pojoClasses.Machine;
  * @author vishn
  *
  */
-public class Constants 
+public class Constants
 {
 	public static HashMap<String, Machine> MACHINEVSMACHINEINFO;
 	public static HashMap<String, App> APPVSAPPINFO;
 	public static HashMap<String, App> INSTANCEVSAPP;
 	public static HashMap<String, Instance> INSTANCEVSINSTANCEINFO;
-	
+
 	static
 	{
 		MACHINEVSMACHINEINFO = new HashMap<>();
