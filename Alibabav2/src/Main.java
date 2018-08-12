@@ -194,7 +194,8 @@ public class Main
                                 machineVsappVsAppCount.put(machineName, appVsAppCountMap);
                                 appVsAppCountMap.put(app,0);
                             }
-                            appVsAppCountMap.put(app,appVsAppCountMap.get(app)+1);
+                            
+                            appVsAppCountMap.put(app,appVsAppCountMap.get(app)!=null ? appVsAppCountMap.get(app)+1 : 1);
                             
                             Double[] appResource = appVsAppResource.get(instanceVsApp.get(instanceName));
                             Double[] machineUsedResource = machineVsusedMachineResource.get(machineName);
@@ -255,7 +256,7 @@ public class Main
             // if a2>k, can't add app 1
             
             String app1 = app;
-            int a1 = currentInstanceCount;
+            int a1 = currentInstanceCount+1;
             String app2 = existingAppVsAppCount.getKey();
             int a2 = existingAppVsAppCount.getValue();
             int k = Integer.MAX_VALUE;
@@ -265,7 +266,7 @@ public class Main
                     appVsAppInterference.get(app1).get(app2);
             }
 
-            if(a2>k){
+            if(a2>k || k==0){
                 return true;
             }
             
@@ -273,10 +274,18 @@ public class Main
             // a2=k and a1>1, can't be added
             // or else, can add.
             
-            if(a1 == k && a2 > 1){
+            app1 = existingAppVsAppCount.getKey();
+            a1 = existingAppVsAppCount.getValue();
+            app2 = currentInstance;
+            a2 = currentInstanceCount+1;
+            k = Integer.MAX_VALUE;
+            if(appVsAppInterference.get(app1)!=null){
+                k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE :
+                    appVsAppInterference.get(app1).get(app2);
+            }
+            if((a2 == k && a1 >= 1) || k==0){
                 return true;
             }
-   
         }
         return false;
     }
