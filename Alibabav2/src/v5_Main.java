@@ -65,6 +65,9 @@ public class Main_2 {
         //4. Load APP INTERFERENCE FILE
         loadAppInterferenceFile(new BufferedReader(new FileReader(Utility.appInterferenceFile)));
         
+        //5. Reassign previously assigned instances
+        reassignInstances(alreadyAssignedInstances);
+        
     }
     
     public static void loadMachineResourcesFile(BufferedReader br) throws IOException
@@ -201,5 +204,27 @@ public class Main_2 {
             interferenceToSecondInstance.put(app1Name, k);
         }
         br.close();
+    }
+    
+    public static void reassignInstances(HashMap<String, String> alreadyAssignedInstancesVsMachines) {
+        for (String instance : alreadyAssignedInstancesVsMachines.keySet()){
+            String machine = alreadyAssignedInstancesVsMachines.get(instance);
+            
+            // Check if this machine is compatible for this instance
+            Double[] mResource = machineVsmachineResource.get(machine);
+            Double[] mUsedResource = machineVsusedMachineResource.get(machine);
+                // Check 1 - machine resources [true if machine resource is available and instance can be present in machine]
+            boolean c1 = checkMachineResourceAvailability(mResource, mUsedResource);
+        }
+    }
+    
+    public static boolean checkMachineResourceAvailability(Double[] mResource, Double[] mUsedResource) {
+        for (int i=0; i<200; ++i){
+            if (mResource[i] < mUsedResource[i])
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }
