@@ -113,10 +113,10 @@ public class Main
 		System.out.println("Number of machines assigned: " + numAssigned);
 		System.out.println("Number of machines not assigned " + (instanceVsApp.size() - numAssigned));
 
-		pw.write(sb.toString());
-		pw.close();
 		System.out.println("Output ready!");
 
+		pw.write(sb.toString());
+		pw.close();
 	}
 
 	public static void writeToFile(String instance, String machine)
@@ -281,11 +281,6 @@ public class Main
 		{
 			return false;
 		}
-		if (currentInstance.equals("inst_87348"))
-		{
-			int a = 1;
-			System.out.println(a);
-		}
 		String app = instanceVsApp.get(currentInstance);
 		currentInstanceCount = machineVsappVsAppCount.get(machine).get(app) == null ? 0 : machineVsappVsAppCount.get(machine).get(app);
 
@@ -300,10 +295,6 @@ public class Main
 			int a1 = currentInstanceCount + 1;
 			String app2 = existingAppVsAppCount.getKey();
 			int a2 = existingAppVsAppCount.getValue();
-			if (app2.equals("app_4825"))
-			{
-				int l = 0;
-			}
 			int k = Integer.MAX_VALUE;
 			if (appVsAppInterference.get(app1) != null)
 			{
@@ -344,13 +335,11 @@ public class Main
 			app2 = app;
 			a2 = currentInstanceCount + 1;
 			k = Integer.MAX_VALUE;
-			//            System.out.println(appVsAppInterference.get(app1));
 			if (appVsAppInterference.get(app1) != null)
 			{
-				//                System.out.println(appVsAppInterference.get(app1).get(app2));
 				k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE : appVsAppInterference.get(app1).get(app2);
 			}
-			if ((a2 >= k && a1 >= 1) || k == 0)
+			if ((a2 > k && a1 >= 1) || k == 0)
 			{
 				return true;
 			}
