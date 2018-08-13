@@ -49,7 +49,7 @@ public class Main
 		Set<String> instanceList = instanceVsApp.keySet();
 		for (String instance : instanceList)
 		{
-			if (instanceVsMachine.get(instance) == null)
+			while (instanceVsMachine.get(instance) == null)
 			{
 				for (String machine : machineVsmachineResource.keySet())
 				{
@@ -177,7 +177,7 @@ public class Main
 
 	public static void loadInstanceDeployFile(BufferedReader br) throws IOException
 	{
-
+                //add rescheduling code here
 		String line = new String();
 		while ((line = br.readLine()) != null)
 		{
@@ -188,34 +188,53 @@ public class Main
 			if (resource.length > 2)
 			{
 				String machineName = resource[2];
-				instanceVsMachine.put(instanceName, machineName);
-				List<String> instanceList = machineVsInstances.get(machineName);
-				if (instanceList == null)
-				{
-					machineVsInstances.put(machineName, new ArrayList<>());
-				}
-				machineVsInstances.get(machineName).add(resource[0]);
-				// add app count to machine
-				String app = instanceVsApp.get(instanceName);
-				HashMap<String, Integer> appVsAppCountMap = machineVsappVsAppCount.get(machineName);
-				if (appVsAppCountMap == null)
-				{
-					appVsAppCountMap = new HashMap<>();
-					machineVsappVsAppCount.put(machineName, appVsAppCountMap);
-					appVsAppCountMap.put(app, 0);
-				}
-
-				appVsAppCountMap.put(app, appVsAppCountMap.get(app) != null ? appVsAppCountMap.get(app) + 1 : 1);
-
-				Double[] appResource = appVsAppResource.get(instanceVsApp.get(instanceName));
-				Double[] machineUsedResource = machineVsusedMachineResource.get(machineName);
-
-				for (int i = 0; i < 200; ++i)
-				{
-					machineUsedResource[i] += appResource[i];
-				}
-				machineVsusedMachineResource.put(machineName, machineUsedResource);
-			}
+                                boolean isAssigned = true;
+                                Double[] appResource = appVsAppResource.get(instanceVsApp.get(instanceName));
+                                Double[] machineUsedResource = machineVsusedMachineResource.get(machineName);
+                                Double[] machineResource = machineVsmachineResource.get(machineName);
+                                Double[] updatedMachineUsedResources = machineVsusedMachineResource.get(machineName);
+                
+                                for (int i = 0; i < 200; ++i)
+                                {
+                                        if (appResource[i] + machineUsedResource[i] <= machineResource[i])
+                                        {
+                                                updatedMachineUsedResources[i] = appResource[i] + machineUsedResource[i];
+                                        }
+                                        else
+                                        {
+                                                isAssigned = false;
+                                                break;
+                                        }
+                                }
+                                if(isAssigned && !checkIfMachineIsAllergic(machineName, instanceName)){
+                                    instanceVsMachine.put(instanceName, machineName);
+                                    List<String> instanceList = machineVsInstances.get(machineName);
+                                    if (instanceList == null) {
+                                        machineVsInstances.put(machineName, new ArrayList<>());
+                                    }
+                                    machineVsInstances.get(machineName).add(resource[0]);
+                                    // add app count to machine
+                                    String app = instanceVsApp.get(instanceName);
+                                    HashMap<String, Integer> appVsAppCountMap = machineVsappVsAppCount.get(machineName);
+                                    if (appVsAppCountMap == null) {
+                                        appVsAppCountMap = new HashMap<>();
+                                        machineVsappVsAppCount.put(machineName, appVsAppCountMap);
+                                        appVsAppCountMap.put(app, 0);
+                                    }
+                
+                                    appVsAppCountMap.put(app, appVsAppCountMap.get(app) != null ? appVsAppCountMap.get(app) + 1 : 1);
+                
+                                    appResource = appVsAppResource.get(instanceVsApp.get(instanceName));
+                                    machineUsedResource = machineVsusedMachineResource.get(machineName);
+                
+                                    for (int i = 0; i < 200; ++i) {
+                                        machineUsedResource[i] += appResource[i];
+                                    }
+                                    machineVsusedMachineResource.put(machineName, machineUsedResource);
+                                } else {
+                                    
+                                }
+            }
 		}
 		br.close();
 	}
@@ -254,79 +273,82 @@ public class Main
 
 	public static boolean checkIfMachineIsAllergic(String machine, String currentInstance)
 	{
-		String app = instanceVsApp.get(currentInstance);
-		int currentInstanceCount = 0;
-		if (machineVsappVsAppCount.get(machine) == null)
-		{
-			return false;
-		}
-		currentInstanceCount = machineVsappVsAppCount.get(machine).get(app) == null ? 0 : machineVsappVsAppCount.get(machine).get(app);
+        int currentInstanceCount = 0;
+        if (machineVsappVsAppCount.get(machine) == null) {
+            return false;
+        }
+        if (currentInstance.equals("inst_87348")) {
+            int a = 1;
+            System.out.println(a);
+        }
+        String app = instanceVsApp.get(currentInstance);
+        currentInstanceCount =
+            machineVsappVsAppCount.get(machine).get(app) == null ? 0 : machineVsappVsAppCount.get(machine).get(app);
 
-		for (Map.Entry<String, Integer> existingAppVsAppCount : machineVsappVsAppCount.get(machine).entrySet())
-		{
-			//app1, app2, k
-			//app1 count = a1
-			//app2 count = a2
-			// app 1 getting added
-			// if a2>k, can't add app 1
+        for (Map.Entry<String, Integer> existingAppVsAppCount : machineVsappVsAppCount.get(machine).entrySet()) {
+            //app1, app2, k -- app_1391,app_8191,1
+            //app1 count = a1
+            //app2 count = a2
+            // app 1 getting added
+            // if a2>k, can't add app 1
+            String app1 = app;
+            int a1 = currentInstanceCount + 1;
+            String app2 = existingAppVsAppCount.getKey();
+            int a2 = existingAppVsAppCount.getValue();
+            if(app2.equals("app_4825")){
+                int l = 0;
+            }
+            int k = Integer.MAX_VALUE;
+            if (appVsAppInterference.get(app1) != null) {
+                k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE :
+                    appVsAppInterference.get(app1).get(app2);
+            }
 
-			String app1 = app;
-			int a1 = currentInstanceCount + 1;
-			String app2 = existingAppVsAppCount.getKey();
-			int a2 = existingAppVsAppCount.getValue();
-			int k = Integer.MAX_VALUE;
-			if (appVsAppInterference.get(app1) != null)
-			{
-				k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE : appVsAppInterference.get(app1).get(app2);
-			}
+            if (a2 > k || k == 0) {
+                return true;
+            }
+            if (appVsAppInterference.get(app2) != null && appVsAppInterference.get(app2).get(app1) != null &&
+                appVsAppInterference.get(app2).get(app1) == 0) {
+                return true;
+            }
+            //not checking for app2count, coz app2count has to be greater than or equal 1
+            if (appVsAppInterference.get(app1) != null && appVsAppInterference.get(app1).get(app2) != null &&
+                appVsAppInterference.get(app1).get(app2) == 0) {
+                return true;
+            }
 
-			if (a2 > k || k == 0)
-			{
-				return true;
-			}
-			if (appVsAppInterference.get(app2) != null && appVsAppInterference.get(app2).get(app1) != null && appVsAppInterference.get(app2).get(app1) == 0)
-			{
-				return true;
-			}
-			//not checking for app2count, coz app2count has to be greater than or equal 1
-			if (appVsAppInterference.get(app1) != null && appVsAppInterference.get(app1).get(app2) != null && appVsAppInterference.get(app1).get(app2) == 0)
-			{
-				return true;
-			}
+            if (inverseAppVsAppInterference.get(app2) != null &&
+                inverseAppVsAppInterference.get(app2).get(app1) != null &&
+                inverseAppVsAppInterference.get(app2).get(app1) == 0) {
+                return true;
+            }
+            //not checking for app2count, coz app2count has to be greater than or equal 1
+            if (inverseAppVsAppInterference.get(app1) != null &&
+                inverseAppVsAppInterference.get(app1).get(app2) != null &&
+                inverseAppVsAppInterference.get(app1).get(app2) == 0) {
+                return true;
+            }
 
-			if (inverseAppVsAppInterference.get(app2) != null && inverseAppVsAppInterference.get(app2).get(app1) != null && inverseAppVsAppInterference.get(app2).get(app1) == 0)
-			{
-				return true;
-			}
-			//not checking for app2count, coz app2count has to be greater than or equal 1
-			if (inverseAppVsAppInterference.get(app1) != null && inverseAppVsAppInterference.get(app1).get(app2) != null && inverseAppVsAppInterference.get(app1).get(app2) == 0)
-			{
-				return true;
-			}
+            // app_1391,app_8191,1
+            // app2 getting added
+            // a2=k and a1>1, can't be added
+            // or else, can add.
 
-			// app2 getting added
-			// a2=k and a1>1, can't be added
-			// or else, can add.
-
-			app1 = existingAppVsAppCount.getKey();
-			a1 = existingAppVsAppCount.getValue();
-			app2 = currentInstance;
-			a2 = currentInstanceCount + 1;
-			k = Integer.MAX_VALUE;
-			if (appVsAppInterference.get(app1) != null)
-			{
-				k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE : appVsAppInterference.get(app1).get(app2);
-			}
-			if ((a2 == k && a1 >= 1) || k == 0)
-			{
-				return true;
-			}
-		}
-		if (machineVsInstances.get(machine).contains("inst_33721"))
-		{
-			int a = 1;
-			System.out.println(a);
-		}
-		return false;
+            app1 = existingAppVsAppCount.getKey();
+            a1 = existingAppVsAppCount.getValue();
+            app2 = app;
+            a2 = currentInstanceCount + 1;
+            k = Integer.MAX_VALUE;
+//            System.out.println(appVsAppInterference.get(app1));
+            if (appVsAppInterference.get(app1) != null) {
+//                System.out.println(appVsAppInterference.get(app1).get(app2));
+                k = appVsAppInterference.get(app1).get(app2) == null ? Integer.MAX_VALUE :
+                    appVsAppInterference.get(app1).get(app2);
+            }
+            if ((a2 >= k && a1 >= 1) || k == 0) {
+                return true;
+            }
+        }
+        return false;
 	}
 }
