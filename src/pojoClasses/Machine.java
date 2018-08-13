@@ -98,6 +98,8 @@ public class Machine {
 			if (limit == null) {
 				continue;
 			}
+			// if new instance is added (+1) to the existing number of such instances from the same app 
+			// if the limit is not( not crossed ) then the instance is not added.
 			if (!(newAppCount + 1 <= limit)) {
 				return false;
 			}

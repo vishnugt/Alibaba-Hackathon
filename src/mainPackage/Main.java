@@ -21,6 +21,7 @@ public class Main {
 		writeOutput();
 	}
 
+	// Used to write data to files ( creates output.csv - instanceId, MachineId)
 	private static void writeOutput() throws Exception {
 		PrintWriter pw = new PrintWriter(new File(PathConstants.outputFileName));
 		StringBuilder sb = new StringBuilder();

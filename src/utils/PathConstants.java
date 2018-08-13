@@ -6,8 +6,8 @@ package utils;
  */
 public class PathConstants {
 
-	public static final String dataFilesPath = "E:\\alibaba\\DataB\\";
-	
+	//public static final String dataFilesPath = "E:\\alibaba\\DataB\\";
+	public static final String dataFilesPath = "/home/adityap/Desktop/Ongoing/Tianchi/Alibaba-Hackathon/DataA/";
 	public static final String machineResourceFile = dataFilesPath + "machine_resources.csv";
 	public static final String appInterferenceFile = dataFilesPath + "app_interference.csv";
 	public static final String instanceDeployFile = dataFilesPath + "instance_deploy.csv";
