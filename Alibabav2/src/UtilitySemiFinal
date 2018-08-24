@@ -1,0 +1,30 @@
+import java.util.HashMap;
+
+//$Id$
+
+public class Utility
+{
+	//public static final String dataFilesPath = "E:\\alibaba\\DataB\\";
+	public static final String dataFilesPath = "/home/likewise-open/ZOHOCORP/vishnu-5544/alibaba/Alibaba-Hackathon/SemiFinalData/";
+	public static final String dataSet = "e";
+
+	public static final String machineResourceFile = dataFilesPath + "machine_resources." + dataSet + ".csv";
+	public static final String batchJobTasksFile = dataFilesPath + "job_info." + dataSet + ".csv";
+	public static final String instanceDeployFile = dataFilesPath + "instance_deploy." + dataSet + ".csv";
+	public static final String appInterferenceFile = dataFilesPath + "app_interference.csv";
+	public static final String appResourcesFile = dataFilesPath + "app_resources.csv";
+
+	public static final String outputFileName = dataFilesPath + dataSet + "_" + "output.csv";
+
+	public static void main(String[] args)
+	{
+		HashMap<Integer, HashMap<String, Integer>> big = new HashMap<>();
+		HashMap<String, Integer> inner = new HashMap<>();
+		big.put(1, inner);
+
+		inner.put("a", 1);
+
+		System.out.println(big.get(1).get("a"));
+
+	}
+}
