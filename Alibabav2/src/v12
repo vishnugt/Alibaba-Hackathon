@@ -660,7 +660,7 @@ public class Main
 		sb.append(",");
 		sb.append(machine);
 		sb.append(",");
-		sb.append(calculatedStartTime);
+		sb.append(calculatedStartTime * 15);
 		sb.append(",");
 		sb.append(count);
 		sb.append("\n");
