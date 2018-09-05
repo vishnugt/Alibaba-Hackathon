@@ -1,0 +1,411 @@
+package alibaba_r2;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+
+public class Main_RT {
+    public static PrintWriter pw;
+    public static StringBuilder sb;
+    
+    public static Double[][] machineResourceArray = new Double[8000][200];
+    public static Double[][] machineUsedResourceArray = new Double[8000][200];
+    
+    public static Double[][] appResourceArray = new Double[9338][200];
+    
+    public static HashMap<String, HashMap<String, Integer>> appVsAppInterference = new HashMap<>();
+    public static HashMap<String, HashMap<String, Integer>> inverseAppVsAppInterference = new HashMap<>();
+    
+    public static HashMap<String, String> instanceVsApp = new HashMap<>();
+    private static HashMap<String, String> instanceVsMachine = new HashMap<>();
+    private static HashMap<String, List<String>> machineVsInstance = new HashMap<>();
+    private static HashMap<String, HashMap<String, Integer>> machineVsAppVsAppCount = new HashMap<>();
+    private static HashMap<String, Double[]> jobVsRequirements = new HashMap<String, Double[]>();
+    private static HashMap<String, List<String>> jobVsDependancyJobs = new HashMap<>();
+    private static List<String> reassignList = new ArrayList<String>();
+    private static HashMap<String, String> removeInstanceFromMachineMap = new HashMap<>();
+
+    public Main_RT() {
+        super();
+    }
+    
+    public static void main(String[] args) throws FileNotFoundException, IOException {
+        
+        // Load files
+        pw = new PrintWriter(new File(Constants.resultFile));
+        sb = new StringBuilder();
+        
+        //1. Load Machine Resources
+        loadMachineResourcesFile(new BufferedReader(new FileReader(Constants.machineResourcesFile)));
+        
+        //2. Load App resources File
+        loadAppResourcesFile(new BufferedReader(new FileReader(Constants.appResourcesFile)));
+        
+        //3. Load App Interference File
+        loadAppInterferenceFile(new BufferedReader(new FileReader(Constants.appInterfernces)));
+        
+        //4. Load Instance Deploy File
+        loadInstanceDeployFile(new BufferedReader(new FileReader(Constants.instanceDeployFile)));
+        
+        //5. Load Batch Jobs File
+        loadBatchJobsFile(new BufferedReader(new FileReader(Constants.jobInfo)));
+        
+        //6. Reassign all instances, irrespective whether or not they violate
+//        reAssignAllInstances();
+        
+        //6. Reassign instances that violate criteria
+        reassignInstances();
+        
+        pw.write(sb.toString());
+        pw.close();
+    }
+
+    private static void loadMachineResourcesFile(BufferedReader br) throws IOException {
+        System.out.println("Reading machine resources file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null)
+        {
+            String[] resource = line.split(",");
+            String machineName = resource[0];
+            int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+            
+            // machineResourceArray = {98xcpu, 98xmem, disk, p, m, pm} row vectors
+            for (int i = 0; i < 98; ++i){
+                machineResourceArray[machineNumber - 1][i] = Double.parseDouble(resource[1]); //cpu
+                machineResourceArray[machineNumber - 1][i + 98] = Double.parseDouble(resource[2]); //mem
+            }
+            for (int i = 3; i < 7; ++i){
+                machineResourceArray[machineNumber - 1][i + 193] = Double.parseDouble(resource[i]); //disk, p, m, pm
+            }
+            
+            //Initialize machineUsedResourceArray to {98xzero}
+            for (int i = 0; i < 200; ++i){
+                machineUsedResourceArray[machineNumber - 1][i] = 0.0d;
+            }
+        }
+        br.close();
+    }
+
+    private static void loadAppResourcesFile(BufferedReader br) throws IOException {
+        System.out.println("Reading app resources file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null)
+        {
+            String[] resource = line.split(",");
+            String appName = resource[0];
+            int appNumber = Integer.parseInt((appName.split("_"))[1]);
+            String cpuResource[] = resource[1].split("\\|");
+            String ramResource[] = resource[2].split("\\|");
+            
+            // appResourceArray = {98xcpu, 98xmem, disk, p, m, pm} row vectors
+            for (int i = 0; i < 98; ++i){
+                appResourceArray[appNumber - 1][i] = Double.parseDouble(cpuResource[i]);
+                appResourceArray[appNumber - 1][i + 98] = Double.parseDouble(ramResource[i]);
+            }
+            for (int i = 196; i < 200; ++i){
+                appResourceArray[appNumber - 1][i] = Double.parseDouble(resource[i - 193]);
+            }
+        }
+        br.close();
+    }
+
+    private static void loadAppInterferenceFile(BufferedReader br) throws IOException {
+        System.out.println("Reading app interference file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null)
+        {
+            String[] resource = line.split(",");
+            String app1Name = resource[0];
+            String app2Name = resource[1];
+            Integer k = Integer.parseInt(resource[2]);
+            HashMap<String, Integer> interferenceToFirstInstance = appVsAppInterference.get(app1Name);
+            
+            if (interferenceToFirstInstance == null){
+                interferenceToFirstInstance = new HashMap<String, Integer>();
+                appVsAppInterference.put(app1Name, interferenceToFirstInstance);
+            }
+            interferenceToFirstInstance.put(app2Name, k);
+
+            HashMap<String, Integer> interferenceToSecondInstance = inverseAppVsAppInterference.get(app2Name);
+            if (interferenceToSecondInstance == null){
+                interferenceToSecondInstance = new HashMap<String, Integer>();
+                inverseAppVsAppInterference.put(app2Name, interferenceToSecondInstance);
+            }
+            interferenceToSecondInstance.put(app1Name, k);
+        }
+    }
+
+    private static void loadInstanceDeployFile(BufferedReader br) throws IOException {
+        System.out.println("Reading instance deploy file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null)
+        {
+            String[] resource = line.split(",");
+            String instanceName = resource[0];
+            String appName = resource[1];
+            String machineName = resource[2];
+
+            instanceVsApp.put(instanceName, appName);
+
+            // Map machine to instance
+            instanceVsMachine.put(instanceName, machineName);
+
+            // Add instance to machine
+            addInstanceToMachine_checkCompatibility(instanceName, appName, machineName, true, true); // Check compatibility and update list -- true and true
+
+            // Check if instance needs to be reassigned
+            // Logic for now : Will reassign all instances, hence this method isn't applicable
+        }
+        br.close();
+    }
+
+    private static boolean addInstanceToMachine_checkCompatibility(String instanceName, String appName, String machineName, boolean checkCompatibility, boolean updateReassignList) {
+        int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+        int appNumber = Integer.parseInt((appName.split("_"))[1]);
+        
+        boolean resourceCompatibility = true;
+        boolean appCompatibility = true;        
+        if(checkCompatibility){
+            resourceCompatibility = checkResourceCompatibility(machineUsedResourceArray, appResourceArray, machineResourceArray, machineNumber, appNumber, updateReassignList);
+            if(resourceCompatibility){
+                if(instanceName.equals("inst_58726") && machineName.equals("machine_2")){
+                    System.out.println("here again");
+                }
+                appCompatibility = checkAppCompatibility(appName, machineName, instanceName);
+                if (!appCompatibility) {
+                    if (updateReassignList)
+                        reassignList.add(instanceName);
+                    else{
+                        if (instanceName.equals("inst_58726")) {
+                            System.out.println("here again");
+                        }
+                        return false;
+                    }
+                }
+            } else {
+                if (updateReassignList)
+                    reassignList.add(instanceName);
+                else
+                    return false;
+            }
+        }
+        
+        // Update list of instances running on machine
+        List<String> instanceList = machineVsInstance.get(machineName);
+        if (instanceList == null)
+        {
+                machineVsInstance.put(machineName, new ArrayList<>());
+        }
+        machineVsInstance.get(machineName).add(instanceName);
+        
+        // Update machine used resources
+        for (int i = 0; i < 200; i++) {
+            machineUsedResourceArray[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+        }
+
+        // Update list of apps running on machine
+        HashMap<String, Integer> appVsAppCountMap = machineVsAppVsAppCount.get(machineName);
+        if (appVsAppCountMap == null) {
+            appVsAppCountMap = new HashMap<>();
+            machineVsAppVsAppCount.put(machineName, appVsAppCountMap);
+            appVsAppCountMap.put(appName, 1);
+            return true;
+        }
+        appVsAppCountMap.put(appName, appVsAppCountMap.get(appName) != null ? appVsAppCountMap.get(appName) + 1 : 1);
+
+        return true;
+    }
+
+    private static void loadBatchJobsFile(BufferedReader br) throws IOException {
+        String line = new String();
+        while ((line = br.readLine()) != null)
+        {
+            String[] resource = line.split(",");
+            String jobName = resource[0];
+            Double[] requirements = new Double[4];
+            requirements[0] = Double.parseDouble(resource[1]); // cpu
+            requirements[1] = Double.parseDouble(resource[2]); // mem
+            requirements[2] = Double.parseDouble(resource[3]); // instances
+            requirements[3] = Double.parseDouble(resource[4]); // running time
+    
+            // Load job vs job requirements
+            jobVsRequirements.put(jobName, requirements);
+
+            int dependency = resource.length - 5;
+            while(dependency > 0)
+            {
+                List<String> depList = jobVsDependancyJobs.get(jobName);
+                if (depList == null)
+                {
+                        jobVsDependancyJobs.put(jobName, new ArrayList<String>());
+                        depList = jobVsDependancyJobs.get(jobName);
+                }
+                depList.add(resource[dependency]);
+                dependency--;
+            }
+        }
+        br.close();
+    }
+
+    private static boolean checkResourceCompatibility(Double[][] machineUsedResourceArray, Double[][] appResourceArray, Double[][] machineResourceArray, Integer machineNumber, Integer appNumber, boolean checkCPUUsage) {
+        if(!checkCPUUsage){
+            for(int i=0; i<200; i++){
+                if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
+                    return false;
+                } 
+            }
+        } else {
+            for(int i=0; i<200; i++){
+                if(i>97){
+                    if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
+                        return false;
+                    }
+                } else{
+                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i] / 2) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean checkAppCompatibility(String appName, String ...machine) {
+        // We are adding app1 to the machine
+        String app1 = appName;
+        Integer k;
+        String machineName = machine[0];
+        HashMap<String, Integer> appVsappCount = machineVsAppVsAppCount.get(machineName);
+        if(null == appVsappCount){
+            return true;
+        }
+        for(String app2 : appVsappCount.keySet()){
+            HashMap<String, Integer> app1VsAppInterferences = appVsAppInterference.get(app1);
+            HashMap<String, Integer> invApp1VsAppInterferences = inverseAppVsAppInterference.get(app1);
+            if(app2.equals("app_5264") && app1.equals("app_4825")){
+                System.out.println("here");
+                if(machine.length > 1){
+                    String instanceName = machine[1];
+                    if(instanceName.equals("inst_58726")){
+                        System.out.println("jfwqoijd");
+                    }
+                }
+            }
+            // If it doesn't interfere with any app
+            if (null == app1VsAppInterferences && null == invApp1VsAppInterferences){
+                return true;
+            }
+
+            // If app1, app2, k
+            k = app1VsAppInterferences.get(app2);
+            if (null != app1VsAppInterferences && null != k) {
+                Integer app1Count = appVsappCount.get(app1);
+                
+                // If app1, app1, k
+                if (app1 == app2) {
+                    if (app1Count > k) { // No null check for app1 as app2 (=app1) already exists in the machine
+                        return false;
+                    }
+                } else {
+                    if(null == app1Count){
+                        Integer app2Count = appVsappCount.get(app2);
+                        if(app2Count > k){
+                            return false;
+                        }
+                    }
+                    // No else since an existence of app1 once means it can be added indefinitely for this case
+                }
+            }
+
+            // If app2, app1, k
+            k = invApp1VsAppInterferences.get(app2);
+            if (null != invApp1VsAppInterferences && null != k) {
+                Integer app1Count = appVsappCount.get(app1);
+                if(null != app1Count){
+                    if(app1Count + 1 > k){
+                        return false;   
+                    }
+                } else {
+                    if (k == 0){
+                        return false;
+                    }
+                }
+            }  
+        }
+        return true;
+    }
+
+    private static void reAssignAllInstances() {
+        // TODO Use this if the other one doesn't work
+    }
+
+    private static void reassignInstances() {
+        int round = 1;
+        int reassignedCount = 0;
+        System.out.println("Number of instances to reassign : " + reassignList.size());
+        while(round <= 3){
+            if(!removeInstanceFromMachineMap.isEmpty()){
+                Iterator<String> iter = removeInstanceFromMachineMap.keySet().iterator();
+                while(iter.hasNext()){
+                    String instance = iter.next();
+                    removeInstanceFromMachine(instance, removeInstanceFromMachineMap.get(instance));
+                    iter.remove();
+                }
+            }
+            List<String> tempReassignList = new ArrayList<String>(reassignList);
+            for(String instance : tempReassignList){
+                for(int machineNumber = 1; machineNumber <= 8000; machineNumber++){
+                    String machine = "machine_"+machineNumber;
+                    boolean success = addInstanceToMachine_checkCompatibility(instance, instanceVsApp.get(instance), machine, true, false);
+                    if(success){
+                        sb.append(round + "," + instance + "," + machine + "\n");
+                        reassignList.remove(instance);
+                        reassignedCount++;
+                        removeInstanceFromMachineMap.put(instance, machine);
+                        if(reassignedCount % 100 == 0){
+                            System.out.println("Reassigned instance count : " + reassignedCount);
+                        }
+                        break;
+                    }
+                }
+            }
+            round++;
+        }
+        if(reassignList.isEmpty()){
+            System.out.println("Re-assigned all instances!");
+        } else {
+            System.out.println("Wasn't able to reassign " + reassignList.size() + " instances :(");
+        }
+    }
+
+    private static void removeInstanceFromMachine(String instanceName, String machineName) {
+        String appName = instanceVsApp.get(instanceName);
+        int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+        int appNumber = Integer.parseInt((appName.split("_"))[1]);
+        
+        // Update list of instances running on machine
+        machineVsInstance.get(machineName).remove(instanceName);
+        
+        // Update list of apps running on machine
+        HashMap<String, Integer> appVsAppCountMap = machineVsAppVsAppCount.get(machineName);
+        int appCount = appVsAppCountMap.get(appName) - 1;
+        appVsAppCountMap.put(appName, appCount);
+        if (appCount == 0)
+        {
+                appVsAppCountMap.remove(appName);
+        }
+        
+        // Update machine used resources
+        for(int i=0; i<200; i++){
+            machineUsedResourceArray[machineNumber - 1][i] -= appResourceArray[appNumber - 1][i];
+        }
+    }
+}
