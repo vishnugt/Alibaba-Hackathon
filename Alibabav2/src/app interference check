@@ -1,0 +1,49 @@
+    private static boolean checkAppCompatibility(String appName, String machineName) {
+        // We are adding app1 to the machine
+        String app1 = appName;
+        Integer k;
+        HashMap<String, Integer> appVsappCount = machineVsAppVsAppCount.get(machineName);
+        if(null == appVsappCount){
+            return true;
+        }
+        for(String app2 : appVsappCount.keySet()){
+            HashMap<String, Integer> app1VsAppInterferences = appVsAppInterference.get(app1);
+            HashMap<String, Integer> invApp1VsAppInterferences = inverseAppVsAppInterference.get(app1);
+            
+            // If it doesn't interfere with any app
+            if (null == app1VsAppInterferences && null == invApp1VsAppInterferences){
+                return true;
+            }
+
+            // If app1, app2, k
+            if (null != app1VsAppInterferences && null != (k = app1VsAppInterferences.get(app1))) {
+                Integer app1Count = appVsappCount.get(app1);
+                
+                // If app1, app1, k
+                if (app1 == app2) {
+                    if (app1Count > k) { // No null check for app1 as app2 (=app1) already exists in the machine
+                        return false;
+                    }
+                } else {
+                    if(null == app1Count){
+                        Integer app2Count = appVsappCount.get(app2);
+                        if(app2Count > k){
+                            return false;
+                        }
+                    }
+                    // No else since an existence of app1 once means it can be added indefinitely for this case
+                }
+            }
+
+            // If app2, app1, k
+            if (null != invApp1VsAppInterferences && null != (k = invApp1VsAppInterferences.get(app1))) {
+                Integer app1Count = appVsappCount.get(app1);
+                if(null != app1Count){
+                    if(app1Count + 1 > k){
+                        return false;   
+                    }
+                }
+            }  
+        }
+        return true;
+    }
