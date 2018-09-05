@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class Main_RT {
     public static PrintWriter pw;
@@ -18,6 +19,7 @@ public class Main_RT {
     
     public static Double[][] machineResourceArray = new Double[8000][200];
     public static Double[][] machineUsedResourceArray = new Double[8000][200];
+    public static Double[][] machineUsedResourceArrayAllocatedFinally = new Double[8000][200];
     
     public static Double[][] appResourceArray = new Double[9338][200];
     
@@ -32,7 +34,7 @@ public class Main_RT {
     private static HashMap<String, List<String>> jobVsDependancyJobs = new HashMap<>();
     private static List<String> reassignList = new ArrayList<String>();
     private static HashMap<String, String> removeInstanceFromMachineMap = new HashMap<>();
-
+    
     public Main_RT() {
         super();
     }
@@ -89,6 +91,7 @@ public class Main_RT {
             //Initialize machineUsedResourceArray to {98xzero}
             for (int i = 0; i < 200; ++i){
                 machineUsedResourceArray[machineNumber - 1][i] = 0.0d;
+                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] = 0.0d;
             }
         }
         br.close();
@@ -176,17 +179,11 @@ public class Main_RT {
         if(checkCompatibility){
             resourceCompatibility = checkResourceCompatibility(machineUsedResourceArray, appResourceArray, machineResourceArray, machineNumber, appNumber, updateReassignList);
             if(resourceCompatibility){
-                if(instanceName.equals("inst_58726") && machineName.equals("machine_2")){
-                    System.out.println("here again");
-                }
-                appCompatibility = checkAppCompatibility(appName, machineName, instanceName);
+                appCompatibility = checkAppCompatibility(appName, machineName);
                 if (!appCompatibility) {
                     if (updateReassignList)
                         reassignList.add(instanceName);
                     else{
-                        if (instanceName.equals("inst_58726")) {
-                            System.out.println("here again");
-                        }
                         return false;
                     }
                 }
@@ -209,6 +206,12 @@ public class Main_RT {
         // Update machine used resources
         for (int i = 0; i < 200; i++) {
             machineUsedResourceArray[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+        }
+        
+        if(resourceCompatibility && appCompatibility){
+            for (int i = 0; i < 200; i++) {
+                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+            }
         }
 
         // Update list of apps running on machine
@@ -256,33 +259,36 @@ public class Main_RT {
     }
 
     private static boolean checkResourceCompatibility(Double[][] machineUsedResourceArray, Double[][] appResourceArray, Double[][] machineResourceArray, Integer machineNumber, Integer appNumber, boolean checkCPUUsage) {
-        if(!checkCPUUsage){
-            for(int i=0; i<200; i++){
-                if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
-                    return false;
-                } 
-            }
-        } else {
+//        if(!checkCPUUsage){
+//            for(int i=0; i<200; i++){
+//                if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
+//                    return false;
+//                } 
+//            }
+//        } else {
             for(int i=0; i<200; i++){
                 if(i>97){
                     if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
                         return false;
                     }
                 } else{
-                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i] / 2) {
+                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]) {
+                        return false;
+                    }
+                    
+                    if ((machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]*0.5) {
                         return false;
                     }
                 }
             }
-        }
+//        }
         return true;
     }
 
-    private static boolean checkAppCompatibility(String appName, String ...machine) {
+    private static boolean checkAppCompatibility(String appName, String machineName) {
         // We are adding app1 to the machine
         String app1 = appName;
         Integer k;
-        String machineName = machine[0];
         HashMap<String, Integer> appVsappCount = machineVsAppVsAppCount.get(machineName);
         if(null == appVsappCount){
             return true;
@@ -290,15 +296,6 @@ public class Main_RT {
         for(String app2 : appVsappCount.keySet()){
             HashMap<String, Integer> app1VsAppInterferences = appVsAppInterference.get(app1);
             HashMap<String, Integer> invApp1VsAppInterferences = inverseAppVsAppInterference.get(app1);
-            if(app2.equals("app_5264") && app1.equals("app_4825")){
-                System.out.println("here");
-                if(machine.length > 1){
-                    String instanceName = machine[1];
-                    if(instanceName.equals("inst_58726")){
-                        System.out.println("jfwqoijd");
-                    }
-                }
-            }
             // If it doesn't interfere with any app
             if (null == app1VsAppInterferences && null == invApp1VsAppInterferences){
                 return true;
@@ -352,36 +349,40 @@ public class Main_RT {
         int reassignedCount = 0;
         System.out.println("Number of instances to reassign : " + reassignList.size());
         while(round <= 3){
-            if(!removeInstanceFromMachineMap.isEmpty()){
-                Iterator<String> iter = removeInstanceFromMachineMap.keySet().iterator();
-                while(iter.hasNext()){
-                    String instance = iter.next();
-                    removeInstanceFromMachine(instance, removeInstanceFromMachineMap.get(instance));
-                    iter.remove();
-                }
-            }
             List<String> tempReassignList = new ArrayList<String>(reassignList);
             for(String instance : tempReassignList){
-                for(int machineNumber = 1; machineNumber <= 8000; machineNumber++){
-                    String machine = "machine_"+machineNumber;
-                    boolean success = addInstanceToMachine_checkCompatibility(instance, instanceVsApp.get(instance), machine, true, false);
+                String currentMachine = instanceVsMachine.get(instance);
+                for(int machineNumber = 8000; machineNumber >0; machineNumber--){
+                    String machine = "machine_" + machineNumber;
+                    boolean success =
+                        addInstanceToMachine_checkCompatibility(instance, instanceVsApp.get(instance), machine, true,
+                                                                false);
                     if(success){
                         sb.append(round + "," + instance + "," + machine + "\n");
                         reassignList.remove(instance);
                         reassignedCount++;
-                        removeInstanceFromMachineMap.put(instance, machine);
-                        if(reassignedCount % 100 == 0){
+                        removeInstanceFromMachineMap.put(instance, currentMachine);
+                        if(reassignedCount % 500 == 0){
                             System.out.println("Reassigned instance count : " + reassignedCount);
                         }
                         break;
                     }
                 }
             }
+            System.out.println("Round " + round + " is done. Removing instances from old machines ...");
             round++;
+            if (!removeInstanceFromMachineMap.isEmpty() && round < 3) {
+                Iterator<String> iter = removeInstanceFromMachineMap.keySet().iterator();
+                while (iter.hasNext()) {
+                    String instance = iter.next();
+                    removeInstanceFromMachine(instance, removeInstanceFromMachineMap.get(instance));
+                    iter.remove();
+                }
+            }
         }
         if(reassignList.isEmpty()){
             System.out.println("Re-assigned all instances!");
-        } else {
+        } else {            
             System.out.println("Wasn't able to reassign " + reassignList.size() + " instances :(");
         }
     }
