@@ -1,0 +1,598 @@
+package alibaba_r2;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class Main_everybody {
+    public static PrintWriter pw;
+    public static StringBuilder sb;
+    private static Integer M = (Constants.dataSet.equals("c") || Constants.dataSet.equals("d")) ? 9000 : 8000;
+    private static double resourceDivider = 2.0d;
+
+    private static Double[][] machineResourceArray = new Double[M][1470];
+    private static Double[][] machineUsedResourceArray = new Double[M][1470];
+    private static Double[][] machineUsedResourceArrayAllocatedFinally = new Double[M][1470];
+
+    public static Double[][] appResourceArray = new Double[9338][1470];
+
+    public static HashMap < String, HashMap < String, Integer >> appVsAppInterference = new HashMap < > ();
+    public static HashMap < String, HashMap < String, Integer >> inverseAppVsAppInterference = new HashMap < > ();
+
+    public static HashMap < String, String > instanceVsApp = new HashMap < > ();
+    private static HashMap < String, String > instanceVsMachine = new HashMap < > ();
+    private static HashMap < String, List < String >> machineVsInstance = new HashMap < > ();
+    private static HashMap < String, HashMap < String, Integer >> machineVsAppVsAppCount = new HashMap < > ();
+    private static List < String > reassignList = new ArrayList < String > ();
+    private static HashMap < String, String > removeInstanceFromMachineMap = new HashMap < > ();
+
+    //For batch job Tasks
+    private static HashMap < String, List < String >> jobVsDependancyJobs = new HashMap < > ();
+    private static HashMap < String, Double[] > jobVsRequirements = new HashMap < > (); //job vs mem, cpu, instances, time
+    private static HashMap < String, Integer > jobVsCompletedTime = new HashMap < > ();
+    private static HashMap < String, Integer > machineJobStartTimeVsCount = new HashMap < > ();
+
+
+    public Main_everybody() {
+        super();
+    }
+
+    public static void main(String[] args) throws FileNotFoundException, IOException {
+
+        // Load files
+        pw = new PrintWriter(new File(Constants.resultFile));
+        sb = new StringBuilder();
+
+        //1. Load Machine Resources
+        loadMachineResourcesFile(new BufferedReader(new FileReader(Constants.machineResourcesFile)));
+
+        //2. Load App resources File
+        loadAppResourcesFile(new BufferedReader(new FileReader(Constants.appResourcesFile)));
+
+        //3. Load App Interference File
+        loadAppInterferenceFile(new BufferedReader(new FileReader(Constants.appInterfernces)));
+
+        //4. Load Instance Deploy File
+        loadInstanceDeployFile(new BufferedReader(new FileReader(Constants.instanceDeployFile)));
+
+        //5. Load Batch Jobs File
+        loadBatchJobsFile(new BufferedReader(new FileReader(Constants.jobInfo)));
+
+        //6. Reassign instances that violate criteria
+        reassignInstances();
+
+        //6.5 change machine resource and used resource to 1 minute time unit
+        changeTimeUnitToAMinute();
+
+        //7. assign BatchJobs
+        assignBatchJobs();
+
+        //8. write jobsOutpu
+        writeAllBatchJobsOutpu();
+
+        pw.write(sb.toString());
+        pw.close();
+    }
+
+    private static void loadMachineResourcesFile(BufferedReader br) throws IOException {
+        System.out.println("Reading machine resources file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null) {
+            String[] resource = line.split(",");
+            String machineName = resource[0];
+            int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+
+            // machineResourceArray = {98xcpu, 98xmem, disk, p, m, pm} row vectors
+            for (int i = 0; i < 98; ++i) {
+                machineResourceArray[machineNumber - 1][i] = Double.parseDouble(resource[1]); //cpu
+                machineResourceArray[machineNumber - 1][i + 98] = Double.parseDouble(resource[2]); //mem
+            }
+            for (int i = 3; i < 7; ++i) {
+                machineResourceArray[machineNumber - 1][i + 193] = Double.parseDouble(resource[i]); //disk, p, m, pm
+            }
+
+            //Initialize machineUsedResourceArray to {98xzero}
+            for (int i = 0; i < 200; ++i) {
+                machineUsedResourceArray[machineNumber - 1][i] = 0.0d;
+                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] = 0.0d;
+            }
+        }
+        br.close();
+    }
+
+    private static void loadAppResourcesFile(BufferedReader br) throws IOException {
+        System.out.println("Reading app resources file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null) {
+            String[] resource = line.split(",");
+            String appName = resource[0];
+            int appNumber = Integer.parseInt((appName.split("_"))[1]);
+            String cpuResource[] = resource[1].split("\\|");
+            String ramResource[] = resource[2].split("\\|");
+
+            // appResourceArray = {98xcpu, 98xmem, disk, p, m, pm} row vectors
+            for (int i = 0; i < 98; ++i) {
+                appResourceArray[appNumber - 1][i] = Double.parseDouble(cpuResource[i]);
+                appResourceArray[appNumber - 1][i + 98] = Double.parseDouble(ramResource[i]);
+            }
+            for (int i = 196; i < 200; ++i) {
+                appResourceArray[appNumber - 1][i] = Double.parseDouble(resource[i - 193]);
+            }
+        }
+        br.close();
+    }
+
+    private static void loadAppInterferenceFile(BufferedReader br) throws IOException {
+        System.out.println("Reading app interference file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null) {
+            String[] resource = line.split(",");
+            String app1Name = resource[0];
+            String app2Name = resource[1];
+            Integer k = Integer.parseInt(resource[2]);
+            HashMap < String, Integer > interferenceToFirstInstance = appVsAppInterference.get(app1Name);
+
+            if (interferenceToFirstInstance == null) {
+                interferenceToFirstInstance = new HashMap < String, Integer > ();
+                appVsAppInterference.put(app1Name, interferenceToFirstInstance);
+            }
+            interferenceToFirstInstance.put(app2Name, k);
+
+            HashMap < String, Integer > interferenceToSecondInstance = inverseAppVsAppInterference.get(app2Name);
+            if (interferenceToSecondInstance == null) {
+                interferenceToSecondInstance = new HashMap < String, Integer > ();
+                inverseAppVsAppInterference.put(app2Name, interferenceToSecondInstance);
+            }
+            interferenceToSecondInstance.put(app1Name, k);
+        }
+    }
+
+    private static void loadInstanceDeployFile(BufferedReader br) throws IOException {
+        System.out.println("Reading instance deploy file ...");
+        String line = new String();
+        while ((line = br.readLine()) != null) {
+            String[] resource = line.split(",");
+            String instanceName = resource[0];
+            String appName = resource[1];
+            String machineName = resource[2];
+
+            instanceVsApp.put(instanceName, appName);
+
+            // Map machine to instance
+            instanceVsMachine.put(instanceName, machineName);
+
+            // Add instance to machine
+            addInstanceToMachine_checkCompatibility(instanceName, appName, machineName, true, true); // Check compatibility and update list -- true and true
+
+            // Check if instance needs to be reassigned
+            // Logic for now : Will reassign all instances, hence this method isn't applicable
+        }
+        br.close();
+    }
+
+    private static void loadBatchJobsFile(BufferedReader br) throws IOException {
+        String line = new String();
+        while ((line = br.readLine()) != null) {
+            String[] resource = line.split(",");
+            String jobName = resource[0];
+            Double[] requirements = new Double[4];
+            requirements[0] = Double.parseDouble(resource[1]); // cpu
+            requirements[1] = Double.parseDouble(resource[2]); // mem
+            requirements[2] = Double.parseDouble(resource[3]); // instances
+            requirements[3] = Double.parseDouble(resource[4]); // running time
+
+            // Load job vs job requirements
+            jobVsRequirements.put(jobName, requirements);
+
+            int dependency = resource.length - 5;
+            while (dependency > 0) {
+                List < String > depList = jobVsDependancyJobs.get(jobName);
+                if (depList == null) {
+                    jobVsDependancyJobs.put(jobName, new ArrayList < String > ());
+                    depList = jobVsDependancyJobs.get(jobName);
+                }
+                depList.add(resource[dependency]);
+                dependency--;
+            }
+        }
+        br.close();
+    }
+
+    private static boolean addInstanceToMachine_checkCompatibility(String instanceName, String appName, String machineName, boolean checkCompatibility, boolean updateReassignList) {
+        int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+        int appNumber = Integer.parseInt((appName.split("_"))[1]);
+
+        boolean resourceCompatibility = true;
+        boolean appCompatibility = true;
+        if (checkCompatibility) {
+            resourceCompatibility = checkResourceCompatibility(machineUsedResourceArray, appResourceArray, machineResourceArray, machineNumber, appNumber, updateReassignList);
+            if (resourceCompatibility) {
+                appCompatibility = checkAppCompatibility(appName, machineName);
+                if (!appCompatibility) {
+                    if (updateReassignList)
+                        reassignList.add(instanceName);
+                    else {
+                        return false;
+                    }
+                }
+            } else {
+                if (updateReassignList)
+                    reassignList.add(instanceName);
+                else
+                    return false;
+            }
+        }
+
+        // Update list of instances running on machine
+        List < String > instanceList = machineVsInstance.get(machineName);
+        if (instanceList == null) {
+            machineVsInstance.put(machineName, new ArrayList < > ());
+        }
+        machineVsInstance.get(machineName).add(instanceName);
+
+        // Update machine used resources
+        for (int i = 0; i < 200; i++) {
+            machineUsedResourceArray[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+        }
+
+        if (resourceCompatibility && appCompatibility) {
+            for (int i = 0; i < 200; i++) {
+                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+            }
+        }
+
+        // Update list of apps running on machine
+        HashMap < String, Integer > appVsAppCountMap = machineVsAppVsAppCount.get(machineName);
+        if (appVsAppCountMap == null) {
+            appVsAppCountMap = new HashMap < > ();
+            machineVsAppVsAppCount.put(machineName, appVsAppCountMap);
+            appVsAppCountMap.put(appName, 1);
+            return true;
+        }
+        appVsAppCountMap.put(appName, appVsAppCountMap.get(appName) != null ? appVsAppCountMap.get(appName) + 1 : 1);
+
+        return true;
+    }
+
+    private static boolean checkResourceCompatibility(Double[][] machineUsedResourceArray, Double[][] appResourceArray, Double[][] machineResourceArray, Integer machineNumber, Integer appNumber, boolean checkCPUUsage) {
+        if (!checkCPUUsage) {
+            for (int i = 0; i < 200; i++) {
+                if (machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]) {
+                    return false;
+                }
+            }
+        } else {
+            for (int i = 0; i < 200; i++) {
+                if (i > 97) {
+                    if (machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]) {
+                        return false;
+                    }
+                } else {
+                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]) {
+                        return false;
+                    }
+
+                    if ((machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i] * 0.5) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean checkAppCompatibility(String appName, String machineName) {
+        // We are adding app1 to the machine
+        String app1 = appName;
+        Integer k;
+        HashMap < String, Integer > appVsappCount = machineVsAppVsAppCount.get(machineName);
+        if (null == appVsappCount) {
+            return true;
+        }
+        for (String app2: appVsappCount.keySet()) {
+            HashMap < String, Integer > app1VsAppInterferences = appVsAppInterference.get(app1);
+            HashMap < String, Integer > invApp1VsAppInterferences = inverseAppVsAppInterference.get(app1);
+            // If it doesn't interfere with any app
+            if (null == app1VsAppInterferences && null == invApp1VsAppInterferences) {
+                return true;
+            }
+
+            // If app1, app2, k
+            k = app1VsAppInterferences.get(app2);
+            if (null != app1VsAppInterferences && null != k) {
+                Integer app1Count = appVsappCount.get(app1);
+
+                // If app1, app1, k
+                if (app1 == app2) {
+                    if (app1Count > k) { // No null check for app1 as app2 (=app1) already exists in the machine
+                        return false;
+                    }
+                } else {
+                    if (null == app1Count) {
+                        Integer app2Count = appVsappCount.get(app2);
+                        if (app2Count > k) {
+                            return false;
+                        }
+                    }
+                    // No else since an existence of app1 once means it can be added indefinitely for this case
+                }
+            }
+
+            // If app2, app1, k
+            k = invApp1VsAppInterferences.get(app2);
+            if (null != invApp1VsAppInterferences && null != k) {
+                Integer app1Count = appVsappCount.get(app1);
+                if (null != app1Count) {
+                    if (app1Count + 1 > k) {
+                        return false;
+                    }
+                } else {
+                    if (k == 0) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private static void reassignInstances() {
+        int round = 1;
+        int reassignedCount = 0;
+        System.out.println("Number of instances to reassign : " + reassignList.size());
+        while (round <= 3) {
+            List < String > tempReassignList = new ArrayList < String > (reassignList);
+            for (String instance: tempReassignList) {
+                String currentMachine = instanceVsMachine.get(instance);
+                for (int machineNumber = M; machineNumber > 0; machineNumber--) {
+                    String machine = "machine_" + machineNumber;
+                    boolean success =
+                        addInstanceToMachine_checkCompatibility(instance, instanceVsApp.get(instance), machine, true,
+                            false);
+                    if (success) {
+                        sb.append(round + "," + instance + "," + machine + "\n");
+                        reassignList.remove(instance);
+                        reassignedCount++;
+                        removeInstanceFromMachineMap.put(instance, currentMachine);
+                        if (reassignedCount % 1000 == 0) {
+                            System.out.println("Reassigned instance count : " + reassignedCount);
+                        }
+                        break;
+                    }
+                }
+            }
+            System.out.println("Round " + round + " is done. Removing instances from old machines ...");
+            round++;
+            if (!removeInstanceFromMachineMap.isEmpty() && round < 3) {
+                Iterator < String > iter = removeInstanceFromMachineMap.keySet().iterator();
+                while (iter.hasNext()) {
+                    String instance = iter.next();
+                    removeInstanceFromMachine(instance, removeInstanceFromMachineMap.get(instance));
+                    iter.remove();
+                }
+            }
+        }
+        if (reassignList.isEmpty()) {
+            System.out.println("Re-assigned all instances!");
+        } else {
+            System.out.println("Wasn't able to reassign " + reassignList.size() + " instances :(");
+        }
+    }
+
+    private static void removeInstanceFromMachine(String instanceName, String machineName) {
+        String appName = instanceVsApp.get(instanceName);
+        int machineNumber = Integer.parseInt((machineName.split("_"))[1]);
+        int appNumber = Integer.parseInt((appName.split("_"))[1]);
+
+        // Update list of instances running on machine
+        machineVsInstance.get(machineName).remove(instanceName);
+
+        // Update list of apps running on machine
+        HashMap < String, Integer > appVsAppCountMap = machineVsAppVsAppCount.get(machineName);
+        int appCount = appVsAppCountMap.get(appName) - 1;
+        appVsAppCountMap.put(appName, appCount);
+        if (appCount == 0) {
+            appVsAppCountMap.remove(appName);
+        }
+
+        // Update machine used resources
+        for (int i = 0; i < 200; i++) {
+            machineUsedResourceArray[machineNumber - 1][i] -= appResourceArray[appNumber - 1][i];
+        }
+    }
+
+    private static void changeTimeUnitToAMinute() {
+        int updatedMachineArraySize = (98 * 15 * 2) + 4;
+
+        //machine resource! lol machine resource is a constant!!!!
+        for (int machineNumber = 1; machineNumber <= M; machineNumber++) {
+            String machineName = "machine_" + machineNumber;
+            Double[] machineResource = machineResourceArray[machineNumber - 1];
+            Double[] machineResourceIn1MinuteTimeUnit = new Double[updatedMachineArraySize];
+            for (int i = 0; i < 196; ++i) {
+                for (int j = 0; j < 15; ++j) {
+                    machineResourceIn1MinuteTimeUnit[(i * 15) + j] = machineResource[i];
+                }
+            }
+            machineResourceIn1MinuteTimeUnit[updatedMachineArraySize - 4] = machineResource[200 - 4];
+            machineResourceIn1MinuteTimeUnit[updatedMachineArraySize - 3] = machineResource[200 - 3];
+            machineResourceIn1MinuteTimeUnit[updatedMachineArraySize - 2] = machineResource[200 - 2];
+            machineResourceIn1MinuteTimeUnit[updatedMachineArraySize - 1] = machineResource[200 - 1];
+            machineResourceArray[machineNumber - 1] = machineResourceIn1MinuteTimeUnit;
+        }
+
+        //machine used resource updationv13.5
+        for (int machineNumber = 1; machineNumber <= M; machineNumber++) {
+            Double[] machineUsedResource = machineUsedResourceArray[machineNumber - 1];
+            Double[] machineUsedResourceIn1MinuteTimeUnit = new Double[updatedMachineArraySize];
+            for (int i = 0; i < 196; ++i) {
+                for (int j = 0; j < 15; ++j) {
+                    machineUsedResourceIn1MinuteTimeUnit[(i * 15) + j] = machineUsedResource[i];
+                }
+            }
+            machineUsedResourceIn1MinuteTimeUnit[updatedMachineArraySize - 4] = machineUsedResource[200 - 4];
+            machineUsedResourceIn1MinuteTimeUnit[updatedMachineArraySize - 3] = machineUsedResource[200 - 3];
+            machineUsedResourceIn1MinuteTimeUnit[updatedMachineArraySize - 2] = machineUsedResource[200 - 2];
+            machineUsedResourceIn1MinuteTimeUnit[updatedMachineArraySize - 1] = machineUsedResource[200 - 1];
+            machineUsedResourceArray[machineNumber - 1] = machineUsedResourceIn1MinuteTimeUnit;
+        }
+    }
+    private static void assignBatchJobs() {
+        int machineArraySize = M;
+        int numJobsAssigned = 0;
+        String[] machineNamesArray = new String[M];
+        for(int i=1; i<=M; i++){
+            String machineName = "machine_"+i;
+            machineNamesArray[i - 1] = machineName;
+        }
+        while (jobVsCompletedTime.size() != jobVsRequirements.size()) {
+            for (String jobName: jobVsRequirements.keySet()) {
+                int maximumTime = allDepJobsCompleted(jobName);
+                if (jobVsCompletedTime.containsKey(jobName)) {
+                    //alreadyAssigned
+                } else if (maximumTime != -1) {
+                    boolean relax = false;
+                    //eligible to assign
+                    maximumTime = maximumTime == 0 ? -1 : maximumTime; //we start from next unit after maximum time, if its 0, we start from 1, to avoid that we set it to -1
+                    Double[] requirements = jobVsRequirements.get(jobName);
+                    double cpu = requirements[0];
+                    double memory = requirements[1];
+                    int numInstances = requirements[2].intValue();
+                    int time = requirements[3].intValue();
+                    boolean completed = false;
+                    int numIter = 0;
+                    while (!completed) {
+                        numIter++;
+                        if (numIter > 1000) {
+                            //System.out.println("infinite loop");
+                            //writeAllBatchJobsOutpu();
+                            relax = true;
+                            debugHere(true);
+                            //return;
+                        }
+                        for (int i = maximumTime + 1; i < 1470 - time && !completed; ++i) {
+                            //find a machine for this job
+                            //for (String machine : machineVsmachineResource.keySet())
+                            for (int machineIter = 1; machineIter <= machineArraySize && !completed; machineIter++) {
+                                //resourceDivider = machineIter < 1000 ? 1.0d : 2.0d;
+                                String machine = machineNamesArray[machineIter - 1];
+                                if (!machineVsAppVsAppCount.containsKey(machine) && !relax) {
+                                    continue;
+                                }
+                                Double[] machineResource = machineResourceArray[machineIter - 1];
+                                Double[] machineUsedResource = machineUsedResourceArray[machineIter - 1];
+                                int calculatedStartTime = canPutTaskInMachine(i, machineIter, machineResource, machineUsedResource, memory, cpu, time);
+                                if (calculatedStartTime != -1) {
+                                    Integer previousCompletedTime = jobVsCompletedTime.get(jobName);
+                                    Integer count = machineJobStartTimeVsCount.get(machine + "@" + jobName + "@" + calculatedStartTime);
+                                    if (count == null) {
+                                        machineJobStartTimeVsCount.put(machine + "@" + jobName + "@" + calculatedStartTime, 1);
+                                    } else {
+                                        machineJobStartTimeVsCount.put(machine + "@" + jobName + "@" + calculatedStartTime, count + 1);
+                                    }
+
+                                    calculatedStartTime = calculatedStartTime + time;
+                                    if (previousCompletedTime == null) {
+                                        jobVsCompletedTime.put(jobName, calculatedStartTime);
+                                    } else {
+                                        jobVsCompletedTime.put(jobName, Math.max(previousCompletedTime, calculatedStartTime));
+                                    }
+
+                                    numInstances--;
+                                    //i--;//trying to assing another instance of the same job in the same machine
+                                    machineIter--;
+                                    //it could get stuck inside a loop because it might be able to assign 4 out of 5, and that breaks the logic
+                                    if (numInstances == 0) {
+                                        completed = true;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    numJobsAssigned++;
+                    if (numJobsAssigned % 100 == 0) {
+                        System.out.println(numJobsAssigned + " jobs Assinged");
+                    }
+                }
+
+            }
+        }
+    }
+
+    private static int allDepJobsCompleted(String jobName) {
+        int maximumTime = 0;
+        List < String > depJobs = jobVsDependancyJobs.get(jobName);
+        if (depJobs == null) {
+            return maximumTime;
+        }
+        for (String depJob: depJobs) {
+            if (!jobVsCompletedTime.containsKey(depJob)) {
+                return -1;
+            } else {
+                maximumTime = Math.max(maximumTime, jobVsCompletedTime.get(depJob));
+            }
+        }
+        return maximumTime;
+    }
+
+    private static void debugHere(boolean b) {
+
+        System.out.println("infinite loop");
+        //swriteAllBatchJobsOutpu();
+    }
+
+    private static int canPutTaskInMachine(int i, int machineNumber, Double[] machineResource, Double[] machineUsedResource, double memory, double cpu, int time) {
+        int validStartTime = -1;
+        for (int j = 0; j < time; ++j) {
+            if (machineUsedResource[i + j] + cpu > machineResource[i + j] / resourceDivider || machineUsedResource[i + j + 1470] + memory > machineResource[1470 + i + j]) {
+                break;
+            }
+            if (j == time - 1) {
+                validStartTime = i;
+                break;
+            }
+        }
+        if (validStartTime != -1) {
+            for (int j = 0; j < time; ++j) {
+                //System.out.println(i+j+98);
+                machineUsedResource[i + j] += cpu;
+                machineUsedResource[1470 + i + j] += memory;
+            }
+            machineUsedResourceArray[machineNumber - 1] = machineUsedResource;
+            return validStartTime;
+        }
+        return -1;
+    }
+
+    private static void writeAllBatchJobsOutpu() {
+        for (Map.Entry < String, Integer > entry: machineJobStartTimeVsCount.entrySet()) {
+            String[] split = entry.getKey().split("@");
+            writeJobToFile(split[1], split[0], Integer.parseInt(split[2]), entry.getValue());
+        }
+    }
+
+    private static void writeJobToFile(String jobName, String machine, int calculatedStartTime, Integer count) {
+        sb.append(jobName);
+        sb.append(",");
+        sb.append(machine);
+        sb.append(",");
+        sb.append(calculatedStartTime);
+        sb.append(",");
+        sb.append(count);
+        sb.append("\n");
+
+    }
+
+}
