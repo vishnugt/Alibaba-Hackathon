@@ -91,7 +91,7 @@ public class Main_RT {
             //Initialize machineUsedResourceArray to {98xzero}
             for (int i = 0; i < 200; ++i){
                 machineUsedResourceArray[machineNumber - 1][i] = 0.0d;
-                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] = 0.0d;
+//                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] = 0.0d;
             }
         }
         br.close();
@@ -208,11 +208,11 @@ public class Main_RT {
             machineUsedResourceArray[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
         }
         
-        if(resourceCompatibility && appCompatibility){
-            for (int i = 0; i < 200; i++) {
-                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
-            }
-        }
+//        if(resourceCompatibility && appCompatibility){
+//            for (int i = 0; i < 200; i++) {
+//                machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] += appResourceArray[appNumber - 1][i];
+//            }
+//        }
 
         // Update list of apps running on machine
         HashMap<String, Integer> appVsAppCountMap = machineVsAppVsAppCount.get(machineName);
@@ -259,29 +259,29 @@ public class Main_RT {
     }
 
     private static boolean checkResourceCompatibility(Double[][] machineUsedResourceArray, Double[][] appResourceArray, Double[][] machineResourceArray, Integer machineNumber, Integer appNumber, boolean checkCPUUsage) {
-//        if(!checkCPUUsage){
-//            for(int i=0; i<200; i++){
-//                if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
-//                    return false;
-//                } 
-//            }
-//        } else {
+        if(!checkCPUUsage){
+            for(int i=0; i<200; i++){
+                if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
+                    return false;
+                } 
+            }
+        } else {
             for(int i=0; i<200; i++){
                 if(i>97){
                     if(machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i] > machineResourceArray[machineNumber - 1][i]){
                         return false;
                     }
                 } else{
-                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]) {
+                    if ((machineUsedResourceArray[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]/2) {
                         return false;
                     }
                     
-                    if ((machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]*0.5) {
-                        return false;
-                    }
+//                    if ((machineUsedResourceArrayAllocatedFinally[machineNumber - 1][i] + appResourceArray[appNumber - 1][i]) > machineResourceArray[machineNumber - 1][i]*0.5) {
+//                        return false;
+//                    }
                 }
             }
-//        }
+        }
         return true;
     }
 
